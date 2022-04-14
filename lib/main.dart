@@ -1,27 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:path/path.dart';
 
-void main() 
+import 'camera.dart';
+
+void main()
 {
-    runApp(const Runner());
+    runApp(MaterialApp(
+        initialRoute: '/home',
+        routes: {
+            '/home': (context) => const Runner(),
+            '/camera': (context) => const Camera()
+        },
+    ));
 }
 
-class Runner extends StatelessWidget 
+class Runner extends StatelessWidget
 {
     const Runner({Key? key}) : super(key: key);
 
     @override
     Widget build(BuildContext context) {
         return MaterialApp(
-            title: 'Flutter Demo',
-            theme: ThemeData(
-                primarySwatch: Colors.blue,
-            ),
-            home: const MyHomePage(title: 'Flutter Demo Home Page'),
+            home: Scaffold(
+                floatingActionButton: FloatingActionButton(
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => Camera())),
+                    child: const Icon(Icons.camera),
+                )
+            )
         );
     }
 }
 
-class MyHomePage extends StatefulWidget 
+class MyHomePage extends StatefulWidget
 {
     const MyHomePage({Key? key, required this.title}) : super(key: key);
 
@@ -31,7 +41,7 @@ class MyHomePage extends StatefulWidget
     State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> 
+class _MyHomePageState extends State<MyHomePage>
 {
     int _counter = 0;
 
