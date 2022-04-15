@@ -14,6 +14,7 @@ class Camera extends StatefulWidget
 class _CameraState extends State<Camera>
 {
     final logger = Logger();
+    CameraController? controller;
 
     @override
     void initState()
@@ -39,19 +40,44 @@ class _CameraState extends State<Camera>
                     )
                 );
             }
+            else {
+                controller = CameraController(camera, ResolutionPreset.high);
+                controller!.initialize().then((_) {
+                    if (mounted) {
+                        setState((){});
+                    }
+                });
+            }
         });
     }
 
     @override
     Widget build(BuildContext context)
     {
+        Widget preview;
+
+        if (controller == null) {
+            preview = Container();
+        }
+        else {
+            preview = CameraPreview(controller!);
+        }
+
         return MaterialApp(
             home: Scaffold(
+                body: Center(child: preview),
                 floatingActionButton: FloatingActionButton(
                     onPressed: () => Navigator.pop(context),
                     child: const Icon(Icons.back_hand),
                 )
             )
         );
+    }
+
+    @override
+    void dispose()
+    {
+        controller?.dispose();
+        super.dispose();
     }
 }
