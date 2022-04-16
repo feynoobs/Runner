@@ -46,16 +46,13 @@ class _CameraState extends State<Camera>
                 );
             }
             else {
-                _controller = CameraController(camera, ResolutionPreset.high);
+                _controller = CameraController(camera, ResolutionPreset.max);
                 _controller!.initialize().then((_) {
                     _controller?.startImageStream((CameraImage image) async {
-                        // var aaa = await TesseractOcr.extractText(image.format.raw);
-                        // _logger.v(aaa);
                         if (_isRunning == false) {
                             _isRunning = true;
                             _text = '';
-                            final RecognisedText rt = await GoogleMlKit.vision.textDetectorV2().processImage(_createInputImageFromCameraImage(image));
-                            _logger.v(rt);
+                            final RecognisedText rt = await GoogleMlKit.vision.textDetector().processImage(_createInputImageFromCameraImage(image));
                             for (TextBlock block in rt.blocks) {
                                 for (TextLine line in block.lines) {
                                     for (TextElement elem in line.elements) {
@@ -63,7 +60,10 @@ class _CameraState extends State<Camera>
                                     }
                                 }
                             }
-                            setState(() {});
+                            _logger.v(_text);
+                            if (mounted == true) {
+                                setState(() {});
+                            }
                             _isRunning = false;
                         }
                     });
@@ -86,14 +86,13 @@ class _CameraState extends State<Camera>
 
         return MaterialApp(
             home: Scaffold(
-                body: Center(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                body: Center(child: Stack(
                     children: <Widget>[
                         preview,
                         Text(
                             _text,
                             style: const TextStyle(
-                                fontSize: 20,
+                                fontSize: 24,
                                 color: Colors.orange
                             ),
                         )
@@ -133,7 +132,7 @@ class _CameraState extends State<Camera>
                 rotate = InputImageRotation.Rotation_180deg;
                 break;
             case 270:
-                rotate = InputImageRotation.Rotation_180deg;
+                rotate = InputImageRotation.Rotation_270deg;
                 break;
         }
 
