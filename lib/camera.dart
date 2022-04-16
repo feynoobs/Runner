@@ -19,7 +19,7 @@ class _CameraState extends State<Camera>
     final _logger = Logger();
     bool _isRunning = false;
     CameraController? _controller;
-    String _text = 'aaaaa';
+    String _text = '';
 
     @override
     void initState()
