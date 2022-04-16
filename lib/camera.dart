@@ -37,10 +37,10 @@ class _CameraState extends State<Camera>
                     context: context,
                     barrierDismissible: false,
                     builder: (BuildContext context) => AlertDialog(
-                        title: Text('確認'),
-                        content: Text('このアプリはリアカメラが必要です'),
+                        title: const Text('確認'),
+                        content: const Text('このアプリはリアカメラが必要です'),
                         actions: [
-                            TextButton(child: Text('OK'), onPressed: () => Navigator.pop(context))
+                            TextButton(child: const Text('OK'), onPressed: () => Navigator.pop(context))
                         ]
                     )
                 );
@@ -120,25 +120,9 @@ class _CameraState extends State<Camera>
             buffer.putUint8List(plane.bytes);
         }
 
-        InputImageRotation rotate = InputImageRotation.Rotation_0deg;
-        switch (_controller?.description.sensorOrientation) {
-            case 0:
-                rotate = InputImageRotation.Rotation_0deg;
-                break;
-            case 90:
-                rotate = InputImageRotation.Rotation_90deg;
-                break;
-            case 180:
-                rotate = InputImageRotation.Rotation_180deg;
-                break;
-            case 270:
-                rotate = InputImageRotation.Rotation_270deg;
-                break;
-        }
-
         final InputImageData data = InputImageData(
             size: Size(cameraImage.width.toDouble(), cameraImage.height.toDouble()),
-            imageRotation: rotate,
+            imageRotation: InputImageRotationMethods.fromRawValue(_controller!.description.sensorOrientation) ?? InputImageRotation.Rotation_0deg,
             inputImageFormat: InputImageFormatMethods.fromRawValue(cameraImage.format.raw) ?? InputImageFormat.NV21,
             planeData: cameraImage.planes.map((Plane plane) => InputImagePlaneMetadata(bytesPerRow: plane.bytesPerRow, height: plane.height, width: plane.width)).toList()
         );
