@@ -22,7 +22,7 @@ class Runner extends StatelessWidget
         return MaterialApp(
             home: Scaffold(
                 floatingActionButton: FloatingActionButton(
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => Camera())),
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const Camera())),
                     child: const Icon(Icons.camera),
                 )
             )
