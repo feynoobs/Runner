@@ -1,1 +1,2 @@
 # Runner
+google_ml_kitとcameraを用いたFlutterのOCRです。google_ml_kitの制約上ラテン文字しか認識しません。また何故か縦長キャプチャしか動きません。原因わかる方教えてください！！
