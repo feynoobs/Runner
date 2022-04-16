@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+
 import 'package:camera/camera.dart';
 import 'package:logger/logger.dart';
+import 'package:google_ml_kit/google_ml_kit.dart';
 
 class Camera extends StatefulWidget
 {
@@ -13,8 +16,10 @@ class Camera extends StatefulWidget
 
 class _CameraState extends State<Camera>
 {
-    final logger = Logger();
-    CameraController? controller;
+    final _logger = Logger();
+    bool _isRunning = false;
+    CameraController? _controller;
+    String _text = 'aaaaa';
 
     @override
     void initState()
@@ -41,11 +46,27 @@ class _CameraState extends State<Camera>
                 );
             }
             else {
-                controller = CameraController(camera, ResolutionPreset.high);
-                controller!.initialize().then((_) {
-                    if (mounted) {
-                        setState((){});
-                    }
+                _controller = CameraController(camera, ResolutionPreset.high);
+                _controller!.initialize().then((_) {
+                    _controller?.startImageStream((CameraImage image) async {
+                        // var aaa = await TesseractOcr.extractText(image.format.raw);
+                        // _logger.v(aaa);
+                        if (_isRunning == false) {
+                            _isRunning = true;
+                            _text = '';
+                            final RecognisedText rt = await GoogleMlKit.vision.textDetectorV2().processImage(_createInputImageFromCameraImage(image));
+                            _logger.v(rt);
+                            for (TextBlock block in rt.blocks) {
+                                for (TextLine line in block.lines) {
+                                    for (TextElement elem in line.elements) {
+                                        _text += elem.text;
+                                    }
+                                }
+                            }
+                            setState(() {});
+                            _isRunning = false;
+                        }
+                    });
                 });
             }
         });
@@ -56,16 +77,28 @@ class _CameraState extends State<Camera>
     {
         Widget preview;
 
-        if (controller == null) {
+        if (_controller == null) {
             preview = Container();
         }
         else {
-            preview = CameraPreview(controller!);
+            preview = CameraPreview(_controller!);
         }
 
         return MaterialApp(
             home: Scaffold(
-                body: Center(child: preview),
+                body: Center(child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: <Widget>[
+                        preview,
+                        Text(
+                            _text,
+                            style: const TextStyle(
+                                fontSize: 20,
+                                color: Colors.orange
+                            ),
+                        )
+                    ])
+                ),
                 floatingActionButton: FloatingActionButton(
                     onPressed: () => Navigator.pop(context),
                     child: const Icon(Icons.back_hand),
@@ -77,7 +110,40 @@ class _CameraState extends State<Camera>
     @override
     void dispose()
     {
-        controller?.dispose();
+        _controller?.dispose();
         super.dispose();
+    }
+
+    InputImage _createInputImageFromCameraImage(CameraImage cameraImage)
+    {
+        final WriteBuffer buffer = WriteBuffer();
+        for (Plane plane in cameraImage.planes) {
+            buffer.putUint8List(plane.bytes);
+        }
+
+        InputImageRotation rotate = InputImageRotation.Rotation_0deg;
+        switch (_controller?.description.sensorOrientation) {
+            case 0:
+                rotate = InputImageRotation.Rotation_0deg;
+                break;
+            case 90:
+                rotate = InputImageRotation.Rotation_90deg;
+                break;
+            case 180:
+                rotate = InputImageRotation.Rotation_180deg;
+                break;
+            case 270:
+                rotate = InputImageRotation.Rotation_180deg;
+                break;
+        }
+
+        final InputImageData data = InputImageData(
+            size: Size(cameraImage.width.toDouble(), cameraImage.height.toDouble()),
+            imageRotation: rotate,
+            inputImageFormat: InputImageFormatMethods.fromRawValue(cameraImage.format.raw) ?? InputImageFormat.NV21,
+            planeData: cameraImage.planes.map((Plane plane) => InputImagePlaneMetadata(bytesPerRow: plane.bytesPerRow, height: plane.height, width: plane.width)).toList()
+        );
+
+        return InputImage.fromBytes(bytes: buffer.done().buffer.asUint8List(), inputImageData: data);
     }
 }
