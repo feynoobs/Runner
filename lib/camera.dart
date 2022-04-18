@@ -14,10 +14,11 @@ class Camera extends StatefulWidget
 }
 
 
-class _CameraState extends State<Camera>
+class _CameraState extends State<Camera> with WidgetsBindingObserver
 {
     final _logger = Logger();
     bool _isRunning = false;
+    bool _isClose = false;
     CameraController? _controller;
     String _text = '';
 
@@ -25,62 +26,10 @@ class _CameraState extends State<Camera>
     void initState()
     {
         super.initState();
-        availableCameras().then((cameras) {
-            // 最初に見つかった背面カメラを使用する
-            CameraDescription? camera;
-            for (var element in cameras) {
-                if (element.lensDirection == CameraLensDirection.back) {
-                    camera = element;
-                    break;
-                }
-            }
-            // 背面カメラがなかったらアラートを出す
-            if (camera == null) {
-                showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (BuildContext context) => AlertDialog(
-                        title: const Text('確認'),
-                        content: const Text('このアプリはリアカメラが必要です'),
-                        actions: [
-                            TextButton(child: const Text('OK'), onPressed: () => Navigator.pop(context))
-                        ]
-                    )
-                );
-            }
-            // 背面カメラがあれば処理継続
-            else {
-                _controller = CameraController(camera, ResolutionPreset.max);
-                // initializeがカメラ起動処理完了待ちらしい
-                _controller!.initialize().then((_) {
-                    // 画像読み込み
-                    _controller?.startImageStream((CameraImage image) async {
-                        // OCR処理中はスキップ
-                        if (_isRunning == false) {
-                            _isRunning = true;
-                            final RecognisedText rt = await GoogleMlKit.vision.textDetector().processImage(_createInputImageFromCameraImage(image));
-                            // とりあえず認識したテキストを全部つなげてみる
-                            _text = '';
-                            for (TextBlock block in rt.blocks) {
-                                for (TextLine line in block.lines) {
-                                    for (TextElement elem in line.elements) {
-                                        _text += elem.text;
-                                    }
-                                }
-                            }
-                            _logger.v(_text);
-                            // 認識したテキストをsetStateで描画する
-                            // 画面が終わったあとにOCRの処理が戻ってくることがあるので
-                            // mountedでチェックする
-                            if (mounted == true) {
-                                setState(() {});
-                            }
-                            _isRunning = false;
-                        }
-                    });
-                });
-            }
-        });
+        WidgetsBinding.instance!.addObserver(this);
+        if (_controller == null) {
+            _startCamera();
+        }
     }
 
     @override
@@ -122,8 +71,42 @@ class _CameraState extends State<Camera>
     @override
     void dispose()
     {
+        WidgetsBinding.instance!.removeObserver(this);
         _controller?.dispose();
         super.dispose();
+    }
+
+    @override
+    void didChangeAppLifecycleState(AppLifecycleState state)
+    {
+        switch (state) {
+            case AppLifecycleState.inactive:
+                _logger.e('inactive');
+                if (_isClose == false) {
+                    _controller?.dispose();
+                    _isClose = true;
+                }
+                break;
+            case AppLifecycleState.paused:
+                _logger.e('paused');
+                if (_isClose == false) {
+                    _controller?.dispose();
+                    _isClose = true;
+                }
+                break;
+            case AppLifecycleState.detached:
+                _logger.e('detached');
+                if (_isClose == false) {
+                    _controller?.dispose();
+                    _isClose = true;
+                }
+                break;
+            case AppLifecycleState.resumed:
+                _logger.e('resumed');
+                _controller?.dispose();
+                _startCamera();
+                break;
+        }
     }
 
     // CameraImageをOCRが処理できるInputImageに変換するメソッド
@@ -144,5 +127,66 @@ class _CameraState extends State<Camera>
         );
 
         return InputImage.fromBytes(bytes: buffer.done().buffer.asUint8List(), inputImageData: data);
+    }
+
+    void _startCamera() async
+    {
+        availableCameras().then((cameras) {
+            // 最初に見つかった背面カメラを使用する
+            CameraDescription? camera;
+            for (CameraDescription element in cameras) {
+                if (element.lensDirection == CameraLensDirection.back) {
+                    camera = element;
+                    break;
+                }
+            }
+            // 背面カメラがなかったらアラートを出す
+            if (camera == null) {
+                showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (BuildContext context) => AlertDialog(
+                        title: const Text('確認'),
+                        content: const Text('このアプリはリアカメラが必要です'),
+                        actions: [
+                            TextButton(child: const Text('OK'), onPressed: () => Navigator.pop(context))
+                        ]
+                    )
+                );
+            }
+            // 背面カメラがあれば処理継続
+            else {
+                _isClose = false;
+                _controller = CameraController(camera, ResolutionPreset.max);
+                // initializeがカメラ起動処理完了待ちらしい
+                _controller?.initialize().then((_) {
+                    // 画像読み込み
+                    _controller?.startImageStream((CameraImage image) async {
+                        // OCR処理中はスキップ
+                        if (_isRunning == false) {
+                            _isRunning = true;
+                            final RecognisedText rt = await GoogleMlKit.vision.textDetector().processImage(_createInputImageFromCameraImage(image));
+                            // とりあえず認識したテキストを全部つなげてみる
+                            _text = '';
+                            for (TextBlock block in rt.blocks) {
+                                for (TextLine line in block.lines) {
+                                    for (TextElement elem in line.elements) {
+                                        _text += elem.text;
+                                    }
+                                }
+                            }
+                            // _logger.v(_text);
+                            // 認識したテキストをsetStateで描画する
+                            // 画面が終わったあとにOCRの処理が戻ってくることがあるので
+                            // mountedでチェックする
+                            if (mounted == true) {
+                                setState(() {});
+                            }
+                            _isRunning = false;
+                        }
+                    });
+                });
+            }
+        });
     }
 }
